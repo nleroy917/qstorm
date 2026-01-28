@@ -1,0 +1,26 @@
+# qstorm configuration example
+
+provider:
+  name: "elasticsearch-local"
+  type: elasticsearch
+  url: "http://localhost:9200"
+  index: "products"
+  credentials:
+    type: basic
+    username: "elastic"
+    password: "changeme"
+  vector_field: "dense"  # Field containing vectors in your index
+
+benchmark:
+  warmup_iterations: 10      # Queries before measuring
+  burst_size: 500            # Queries per burst
+  concurrency: 10            # Max concurrent requests
+  timeout_ms: 5000           # Request timeout
+  top_k: 10                  # Results per query
+
+# Embedding model for converting text queries to vectors
+embedding:
+  model: "BAAI/bge-small-en-v1.5"  # 384 dimensions
+  # Other options:
+  # model: "BAAI/bge-base-en-v1.5"   # 768 dimensions
+  # model: "all-MiniLM-L6-v2"        # 384 dimensions

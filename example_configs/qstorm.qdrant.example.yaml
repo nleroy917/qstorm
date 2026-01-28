@@ -1,0 +1,19 @@
+# qstorm configuration example for Qdrant
+
+provider:
+  name: "qdrant-local"
+  type: qdrant
+  url: "http://localhost:6334"
+  index: "products"  # Collection name in Qdrant
+  # Optional API key authentication
+  # credentials:
+  #   type: api_key
+  #   key: "your-api-key"
+  vector_field: "dense"  # Vector field name (default: "vector")
+
+benchmark:
+  warmup_iterations: 10
+  burst_size: 500
+  concurrency: 10
+  timeout_ms: 5000
+  top_k: 10
