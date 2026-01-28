@@ -13,7 +13,7 @@ provider:
 
 benchmark:
   warmup_iterations: 10      # Queries before measuring
-  burst_size: 500            # Queries per burst
+  burst_size: 100            # Queries per burst
   concurrency: 10            # Max concurrent requests
   timeout_ms: 5000           # Request timeout
   top_k: 10                  # Results per query
