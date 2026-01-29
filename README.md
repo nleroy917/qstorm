@@ -1,6 +1,6 @@
 # qstorm
 
-Vector search load testing tool.
+Query-storm ("qstorm") is a vector search load testing tool.
 
 ## Installation
 
