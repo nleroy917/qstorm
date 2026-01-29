@@ -96,14 +96,17 @@ impl SearchProvider for QdrantProvider {
 
     async fn vector_search(&self, vector: &[f32], params: &SearchParams) -> Result<SearchResults> {
         let client = self.client()?;
-        let vector_field = self.config.vector_field.as_deref().unwrap_or("vector");
+        let vector_field = self.config.vector_field.as_deref();
 
         let mut search = SearchPointsBuilder::new(
             &self.config.index,
             vector.to_vec(),
             params.top_k as u64,
-        )
-        .vector_name(vector_field);
+        );
+        
+        if let Some(field) = vector_field {
+            search = search.vector_name(field.to_string());
+        }
 
         if params.include_payload {
             search = search.with_payload(true);
