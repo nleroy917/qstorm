@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use elasticsearch::{
+    Elasticsearch, SearchParts,
     auth::Credentials as EsCredentials,
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
-    Elasticsearch, SearchParts,
 };
 use serde_json::json;
 use tracing::debug;
@@ -58,13 +58,10 @@ impl SearchProvider for ElasticsearchProvider {
                 Credentials::Basic { username, password } => {
                     builder.auth(EsCredentials::Basic(username.clone(), password.clone()))
                 }
-                Credentials::ApiKey { key } => builder.auth(EsCredentials::ApiKey(
-                    key.clone(),
-                    "".to_string(),
-                )),
-                Credentials::Bearer { token } => {
-                    builder.auth(EsCredentials::Bearer(token.clone()))
+                Credentials::ApiKey { key } => {
+                    builder.auth(EsCredentials::ApiKey(key.clone(), "".to_string()))
                 }
+                Credentials::Bearer { token } => builder.auth(EsCredentials::Bearer(token.clone())),
             };
         }
 

@@ -4,7 +4,7 @@ mod ui;
 
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
 
@@ -55,10 +55,7 @@ async fn main() -> Result<()> {
 
     // Validate queries file exists
     if !cli.queries.exists() {
-        return Err(anyhow!(
-            "Queries file not found: {}",
-            cli.queries.display()
-        ));
+        return Err(anyhow!("Queries file not found: {}", cli.queries.display()));
     }
 
     let queries_path = cli.queries.to_string_lossy().to_string();
@@ -88,7 +85,11 @@ async fn run_headless(
     app.warmup().await?;
 
     eprintln!("Starting benchmark...");
-    let count = if burst_count == 0 { usize::MAX } else { burst_count };
+    let count = if burst_count == 0 {
+        usize::MAX
+    } else {
+        burst_count
+    };
 
     // Print CSV header
     if matches!(output, OutputFormat::Csv) {

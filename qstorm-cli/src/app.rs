@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use qstorm_core::{
+    BurstMetrics, Config, EmbeddedQuery, Embedder, QueryFile,
     config::{ProviderConfig, ProviderType},
     runner::BenchmarkRunner,
-    BurstMetrics, Config, EmbeddedQuery, Embedder, QueryFile,
 };
 
 /// Application state
@@ -115,10 +115,7 @@ impl App {
             return Err(anyhow!("Query file contains no queries"));
         }
 
-        self.status_message = Some(format!(
-            "Embedding {} queries...",
-            query_file.queries.len()
-        ));
+        self.status_message = Some(format!("Embedding {} queries...", query_file.queries.len()));
 
         let model_name = self
             .config
@@ -194,17 +191,14 @@ impl App {
             _ => self.state,
         };
     }
-
 }
 
 fn create_provider(config: &ProviderConfig) -> Result<Box<dyn qstorm_core::SearchProvider>> {
     match config.provider_type {
         #[cfg(feature = "elasticsearch")]
-        ProviderType::Elasticsearch => {
-            Ok(Box::new(qstorm_core::providers::ElasticsearchProvider::new(
-                config.clone(),
-            )))
-        }
+        ProviderType::Elasticsearch => Ok(Box::new(
+            qstorm_core::providers::ElasticsearchProvider::new(config.clone()),
+        )),
 
         #[cfg(feature = "qdrant")]
         ProviderType::Qdrant => Ok(Box::new(qstorm_core::providers::QdrantProvider::new(

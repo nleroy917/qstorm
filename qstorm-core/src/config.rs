@@ -64,16 +64,9 @@ pub enum ProviderType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Credentials {
-    Basic {
-        username: String,
-        password: String,
-    },
-    ApiKey {
-        key: String,
-    },
-    Bearer {
-        token: String,
-    },
+    Basic { username: String, password: String },
+    ApiKey { key: String },
+    Bearer { token: String },
 }
 
 /// Benchmark execution settings

@@ -17,8 +17,9 @@ impl Embedder {
     #[cfg(feature = "embeddings")]
     pub fn new(model_name: &str) -> Result<Self> {
         let model = parse_model(model_name)?;
-        let embedding = TextEmbedding::try_new(InitOptions::new(model).with_show_download_progress(true))
-            .map_err(|e| Error::Config(format!("Failed to load embedding model: {}", e)))?;
+        let embedding =
+            TextEmbedding::try_new(InitOptions::new(model).with_show_download_progress(true))
+                .map_err(|e| Error::Config(format!("Failed to load embedding model: {}", e)))?;
 
         Ok(Self { model: embedding })
     }

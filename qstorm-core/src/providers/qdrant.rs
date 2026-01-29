@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use qdrant_client::qdrant::{PointId, SearchPointsBuilder};
 use qdrant_client::Qdrant;
+use qdrant_client::qdrant::{PointId, SearchPointsBuilder};
 use tracing::debug;
 
 use crate::config::{Credentials, ProviderConfig};
@@ -48,7 +48,7 @@ impl SearchProvider for QdrantProvider {
                 _ => {
                     return Err(Error::Config(
                         "Qdrant only supports API key authentication".into(),
-                    ))
+                    ));
                 }
             };
         }
@@ -98,12 +98,9 @@ impl SearchProvider for QdrantProvider {
         let client = self.client()?;
         let vector_field = self.config.vector_field.as_deref();
 
-        let mut search = SearchPointsBuilder::new(
-            &self.config.index,
-            vector.to_vec(),
-            params.top_k as u64,
-        );
-        
+        let mut search =
+            SearchPointsBuilder::new(&self.config.index, vector.to_vec(), params.top_k as u64);
+
         if let Some(field) = vector_field {
             search = search.vector_name(field.to_string());
         }

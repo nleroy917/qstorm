@@ -1,10 +1,10 @@
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
     symbols::Marker,
     text::{Line, Span},
     widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Paragraph, Wrap},
-    Frame,
 };
 
 use crate::app::{App, AppState};
@@ -80,10 +80,25 @@ fn render_charts(frame: &mut Frame, area: Rect, app: &App) {
 
 fn render_qps_chart(frame: &mut Frame, area: Rect, app: &App) {
     let data = app.history.qps_series();
-    let max_y = data.iter().map(|(_, y)| *y).fold(0.0_f64, f64::max).max(1.0);
+    let max_y = data
+        .iter()
+        .map(|(_, y)| *y)
+        .fold(0.0_f64, f64::max)
+        .max(1.0);
+
+    // Render name with running average QPS
+    let name = format!(
+        "QPS (avg: {:.1})",
+        app.history
+            .qps_series()
+            .into_iter()
+            .reduce(|a, b| (0.0, a.1 + b.1))
+            .map(|(_, sum)| sum / data.len() as f64)
+            .unwrap_or(0.0)
+    );
 
     let dataset = Dataset::default()
-        .name("QPS")
+        .name(name)
         .marker(Marker::Braille)
         .graph_type(GraphType::Line)
         .style(Style::default().fg(Color::Cyan))
@@ -100,15 +115,11 @@ fn render_qps_chart(frame: &mut Frame, area: Rect, app: &App) {
                 .bounds([0.0, data.len().max(1) as f64])
                 .labels::<Vec<Span>>(vec![]),
         )
-        .y_axis(
-            Axis::default()
-                .bounds([0.0, max_y * 1.1])
-                .labels(vec![
-                    Span::raw("0"),
-                    Span::raw(format!("{:.0}", max_y / 2.0)),
-                    Span::raw(format!("{:.0}", max_y)),
-                ]),
-        );
+        .y_axis(Axis::default().bounds([0.0, max_y * 1.1]).labels(vec![
+            Span::raw("0"),
+            Span::raw(format!("{:.0}", max_y / 2.0)),
+            Span::raw(format!("{:.0}", max_y)),
+        ]));
 
     frame.render_widget(chart, area);
 }
@@ -121,8 +132,19 @@ fn render_latency_chart(frame: &mut Frame, area: Rect, app: &App) {
         .fold(0.0_f64, f64::max)
         .max(1.0);
 
+    // Render name with running average QPS
+    let name = format!(
+        "p50 (avg: {:.1})",
+        app.history
+            .p50_series()
+            .into_iter()
+            .reduce(|a, b| (0.0, a.1 + b.1))
+            .map(|(_, sum)| sum / p50_data.len() as f64)
+            .unwrap_or(0.0)
+    );
+
     let dataset = Dataset::default()
-        .name("p50")
+        .name(name)
         .marker(Marker::Braille)
         .graph_type(GraphType::Line)
         .style(Style::default().fg(Color::Green))
@@ -139,15 +161,11 @@ fn render_latency_chart(frame: &mut Frame, area: Rect, app: &App) {
                 .bounds([0.0, p50_data.len().max(1) as f64])
                 .labels::<Vec<Span>>(vec![]),
         )
-        .y_axis(
-            Axis::default()
-                .bounds([0.0, max_y * 1.1])
-                .labels(vec![
-                    Span::raw("0"),
-                    Span::raw(format!("{:.1}", max_y / 2.0)),
-                    Span::raw(format!("{:.1}", max_y)),
-                ]),
-        );
+        .y_axis(Axis::default().bounds([0.0, max_y * 1.1]).labels(vec![
+            Span::raw("0"),
+            Span::raw(format!("{:.1}", max_y / 2.0)),
+            Span::raw(format!("{:.1}", max_y)),
+        ]));
 
     frame.render_widget(chart, area);
 }
@@ -160,8 +178,20 @@ fn render_p99_chart(frame: &mut Frame, area: Rect, app: &App) {
         .fold(0.0_f64, f64::max)
         .max(1.0);
 
+    // Render name with running average QPS
+    let name = format!(
+        "p99 (avg: {:.1})",
+        app.history
+            .p99_series()
+            .into_iter()
+            .reduce(|a, b| (0.0, a.1 + b.1))
+            .map(|(_, sum)| sum / p99_data.len() as f64)
+            .unwrap_or(0.0)
+    );
+
+
     let dataset = Dataset::default()
-        .name("p99")
+        .name(name)
         .marker(Marker::Braille)
         .graph_type(GraphType::Line)
         .style(Style::default().fg(Color::Red))
@@ -178,15 +208,11 @@ fn render_p99_chart(frame: &mut Frame, area: Rect, app: &App) {
                 .bounds([0.0, p99_data.len().max(1) as f64])
                 .labels::<Vec<Span>>(vec![]),
         )
-        .y_axis(
-            Axis::default()
-                .bounds([0.0, max_y * 1.1])
-                .labels(vec![
-                    Span::raw("0"),
-                    Span::raw(format!("{:.1}", max_y / 2.0)),
-                    Span::raw(format!("{:.1}", max_y)),
-                ]),
-        );
+        .y_axis(Axis::default().bounds([0.0, max_y * 1.1]).labels(vec![
+            Span::raw("0"),
+            Span::raw(format!("{:.1}", max_y / 2.0)),
+            Span::raw(format!("{:.1}", max_y)),
+        ]));
 
     frame.render_widget(chart, area);
 }
@@ -226,15 +252,11 @@ fn render_recall_chart(frame: &mut Frame, area: Rect, app: &App) {
                 .bounds([0.0, recall_data.len().max(1) as f64])
                 .labels::<Vec<Span>>(vec![]),
         )
-        .y_axis(
-            Axis::default()
-                .bounds([0.0, 100.0])
-                .labels(vec![
-                    Span::raw("0"),
-                    Span::raw("50"),
-                    Span::raw("100"),
-                ]),
-        );
+        .y_axis(Axis::default().bounds([0.0, 100.0]).labels(vec![
+            Span::raw("0"),
+            Span::raw("50"),
+            Span::raw("100"),
+        ]));
 
     frame.render_widget(chart, area);
 }
