@@ -69,9 +69,23 @@ pub enum Credentials {
     Bearer { token: String },
 }
 
+/// What kind of search to benchmark
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SearchMode {
+    /// Pure vector similarity search
+    #[default]
+    Vector,
+    /// Hybrid search (text + vector, provider handles fusion)
+    Hybrid,
+}
+
 /// Benchmark execution settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchmarkConfig {
+    /// Search mode to benchmark
+    #[serde(default)]
+    pub mode: SearchMode,
     /// Number of warmup iterations before measuring
     #[serde(default = "default_warmup")]
     pub warmup_iterations: usize,
@@ -108,6 +122,7 @@ fn default_top_k() -> usize {
 impl Default for BenchmarkConfig {
     fn default() -> Self {
         Self {
+            mode: SearchMode::default(),
             warmup_iterations: default_warmup(),
             burst_size: default_burst_size(),
             concurrency: default_concurrency(),

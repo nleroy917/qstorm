@@ -4,7 +4,7 @@ use std::time::Instant;
 use tokio::sync::Semaphore;
 use tracing::{debug, info, warn};
 
-use crate::config::BenchmarkConfig;
+use crate::config::{BenchmarkConfig, SearchMode};
 use crate::error::Result;
 use crate::metrics::{BurstMetrics, Metrics};
 use crate::provider::SearchProvider;
@@ -70,7 +70,7 @@ impl BenchmarkRunner {
 
         for i in 0..self.config.warmup_iterations {
             let query = &self.queries[i % self.queries.len()];
-            let _ = self.provider.vector_search(&query.vector, &params).await;
+            let _ = self.execute_query(query, &params).await;
         }
 
         info!("Warmup complete");
@@ -103,7 +103,7 @@ impl BenchmarkRunner {
             let params = params.clone();
 
             let start = Instant::now();
-            let result = self.provider.vector_search(&query.vector, &params).await;
+            let result = self.execute_query(query, &params).await;
             let latency = start.elapsed();
 
             match result {
@@ -129,6 +129,22 @@ impl BenchmarkRunner {
             .ok_or_else(|| crate::error::Error::Config("No burst in progress".into()))
     }
 
+    /// Dispatch a query based on the configured search mode
+    async fn execute_query(
+        &self,
+        query: &EmbeddedQuery,
+        params: &SearchParams,
+    ) -> crate::error::Result<crate::types::SearchResults> {
+        match self.config.mode {
+            SearchMode::Vector => self.provider.vector_search(&query.vector, params).await,
+            SearchMode::Hybrid => {
+                self.provider
+                    .hybrid_search(&query.text, &query.vector, params)
+                    .await
+            }
+        }
+    }
+
     /// Get reference to collected metrics
     pub fn metrics(&self) -> &Metrics {
         &self.metrics
@@ -137,5 +153,10 @@ impl BenchmarkRunner {
     /// Get provider name
     pub fn provider_name(&self) -> &str {
         self.provider.name()
+    }
+
+    /// Get the configured search mode
+    pub fn search_mode(&self) -> SearchMode {
+        self.config.mode
     }
 }

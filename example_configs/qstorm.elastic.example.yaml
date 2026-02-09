@@ -1,4 +1,4 @@
-# qstorm configuration example
+# qstorm configuration example for Elasticsearch
 
 provider:
   name: "elasticsearch-local"
@@ -9,14 +9,16 @@ provider:
     type: basic
     username: "elastic"
     password: "changeme"
-  vector_field: "dense"  # Field containing vectors in your index
+  vector_field: "dense"   # dense_vector field name
+  text_field: "content"   # text field for BM25 (used in hybrid mode)
 
 benchmark:
-  warmup_iterations: 10      # Queries before measuring
-  burst_size: 100            # Queries per burst
-  concurrency: 10            # Max concurrent requests
-  timeout_ms: 5000           # Request timeout
-  top_k: 10                  # Results per query
+  mode: vector             # "vector" (default) or "hybrid"
+  warmup_iterations: 10
+  burst_size: 100
+  concurrency: 10
+  timeout_ms: 5000
+  top_k: 10
 
 # Embedding model for converting text queries to vectors
 embedding:

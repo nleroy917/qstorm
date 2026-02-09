@@ -9,7 +9,7 @@ pub mod runner;
 pub mod types;
 
 // re-exports
-pub use config::Config;
+pub use config::{Config, SearchMode};
 pub use embedder::Embedder;
 pub use error::{Error, Result};
 pub use metrics::{BurstMetrics, Metrics};

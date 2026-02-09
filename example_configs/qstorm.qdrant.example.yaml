@@ -9,11 +9,16 @@ provider:
   # credentials:
   #   type: api_key
   #   key: "your-api-key"
-  vector_field: "dense"  # Vector field name (default: "vector")
+  vector_field: "dense"  # Dense vector field name (default: "vector")
+  # text_field: "bm25"   # BM25 sparse index name (required for hybrid mode)
 
 benchmark:
+  mode: vector           # "vector" (default) or "hybrid"
   warmup_iterations: 10
   burst_size: 100
   concurrency: 10
   timeout_ms: 5000
   top_k: 10
+
+embedding:
+  model: "BAAI/bge-small-en-v1.5"
