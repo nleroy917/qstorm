@@ -135,9 +135,16 @@ impl Default for BenchmarkConfig {
 /// Embedding model configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingConfig {
-    /// Model identifier for fastembed
+    /// Model identifier (e.g. "BAAI/bge-small-en-v1.5" for fastembed,
+    /// "text-embedding-3-small" for OpenAI)
     #[serde(default = "default_model")]
     pub model: String,
+    /// API key for OpenAI (can also use OPENAI_API_KEY env var)
+    #[serde(default)]
+    pub api_key: Option<String>,
+    /// Embedding dimensions (for OpenAI models; defaults to 1536)
+    #[serde(default)]
+    pub dimensions: Option<u32>,
 }
 
 fn default_model() -> String {
@@ -148,6 +155,8 @@ impl Default for EmbeddingConfig {
     fn default() -> Self {
         Self {
             model: default_model(),
+            api_key: None,
+            dimensions: None,
         }
     }
 }

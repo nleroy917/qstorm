@@ -10,7 +10,7 @@ pub mod types;
 
 // re-exports
 pub use config::{Config, SearchMode};
-pub use embedder::Embedder;
+pub use embedder::{Embedder, EmbeddingProvider};
 pub use error::{Error, Result};
 pub use metrics::{BurstMetrics, Metrics};
 pub use provider::{Capabilities, SearchProvider};

@@ -28,6 +28,8 @@ hdrhistogram = "7"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 
 fastembed = "4"
+async-openai = "0.27"
+indicatif = "0.17"
 
 clap = { version = "4", features = ["derive"] }
 ratatui = "0.29"

@@ -15,6 +15,7 @@ default = ["elasticsearch", "qdrant"]
 elasticsearch = ["qstorm-core/elasticsearch"]
 qdrant = ["qstorm-core/qdrant"]
 embeddings = ["qstorm-core/embeddings"]
+openai-embeddings = ["qstorm-core/openai-embeddings"]
 
 [dependencies]
 qstorm-core.workspace = true

@@ -75,7 +75,7 @@ async fn run_headless(
 ) -> Result<()> {
     eprintln!("Loading and embedding queries...");
     let mut app = app::App::new(config)?;
-    app.load_and_embed_queries(queries_path)?;
+    app.load_and_embed_queries(queries_path).await?;
     eprintln!("Embedded {} queries", app.query_count());
 
     eprintln!("Connecting to provider...");
@@ -127,7 +127,7 @@ async fn run_tui(config: qstorm_core::Config, queries_path: &str) -> Result<()> 
 
     // Load and embed queries before starting TUI
     eprintln!("Loading and embedding queries (this may take a moment)...");
-    app.load_and_embed_queries(queries_path)?;
+    app.load_and_embed_queries(queries_path).await?;
     eprintln!("Embedded {} queries. Starting TUI...", app.query_count());
 
     let mut terminal = tui::init()?;

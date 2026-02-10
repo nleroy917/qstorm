@@ -107,7 +107,7 @@ impl App {
     }
 
     /// Load queries from file and embed them
-    pub fn load_and_embed_queries(&mut self, query_file_path: &str) -> Result<()> {
+    pub async fn load_and_embed_queries(&mut self, query_file_path: &str) -> Result<()> {
         self.status_message = Some("Loading queries...".into());
 
         let query_file = QueryFile::from_file(query_file_path)?;
@@ -117,15 +117,13 @@ impl App {
 
         self.status_message = Some(format!("Embedding {} queries...", query_file.queries.len()));
 
-        let model_name = self
-            .config
-            .embedding
-            .as_ref()
-            .map(|e| e.model.as_str())
-            .unwrap_or("BAAI/bge-small-en-v1.5");
-
-        let embedder = Embedder::new(model_name)?;
-        self.queries = embedder.embed_queries(&query_file.queries)?;
+        let embedding_config = self.config.embedding.clone().unwrap_or_default();
+        let embedder = Embedder::from_config(&embedding_config)
+            .map_err(|e| anyhow!("{e}"))?;
+        self.queries = embedder
+            .embed_queries(&query_file.queries)
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
 
         self.status_message = Some(format!("Loaded {} queries", self.queries.len()));
         Ok(())
