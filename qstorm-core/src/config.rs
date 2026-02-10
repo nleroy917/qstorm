@@ -58,7 +58,7 @@ pub struct ProviderConfig {
 pub enum ProviderType {
     Elasticsearch,
     Qdrant,
-    // in the future: OpenSearch, Weaviate, etc.
+    Pgvector,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

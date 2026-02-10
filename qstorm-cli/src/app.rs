@@ -203,6 +203,11 @@ fn create_provider(config: &ProviderConfig) -> Result<Box<dyn qstorm_core::Searc
             config.clone(),
         ))),
 
+        #[cfg(feature = "pgvector")]
+        ProviderType::Pgvector => Ok(Box::new(
+            qstorm_core::providers::PgvectorProvider::new(config.clone()),
+        )),
+
         #[allow(unreachable_patterns)]
         _ => Err(anyhow!(
             "Provider {:?} is not enabled in this build",

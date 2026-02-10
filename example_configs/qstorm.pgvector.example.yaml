@@ -1,0 +1,23 @@
+provider:
+  name: "pgvector-local"
+  type: pgvector
+  url: "postgresql://postgres:postgres@localhost:5432/vectors"
+  index: "documents"
+  vector_field: "embedding"
+  # text_field: "content"  # Required for hybrid mode
+
+  # credentials:            # Optional: override URL credentials
+  #   type: basic
+  #   username: "postgres"
+  #   password: "postgres"
+
+benchmark:
+  mode: vector
+  warmup_iterations: 10
+  burst_size: 100
+  concurrency: 10
+  timeout_ms: 5000
+  top_k: 10
+
+embedding:
+  model: "BAAI/bge-small-en-v1.5"

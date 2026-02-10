@@ -11,9 +11,10 @@ name = "qstorm"
 path = "src/main.rs"
 
 [features]
-default = ["elasticsearch", "qdrant"]
+default = ["elasticsearch", "qdrant", "pgvector"]
 elasticsearch = ["qstorm-core/elasticsearch"]
 qdrant = ["qstorm-core/qdrant"]
+pgvector = ["qstorm-core/pgvector"]
 embeddings = ["qstorm-core/embeddings"]
 openai-embeddings = ["qstorm-core/openai-embeddings"]
 
