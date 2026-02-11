@@ -1,18 +1,38 @@
 use anyhow::{Result, anyhow};
 use qstorm_core::{
-    BurstMetrics, Config, EmbeddedQuery, Embedder, QueryFile,
+    BurstMetrics, Config, EmbeddedQuery, Embedder, QueryFile, SearchResults,
     config::{ProviderConfig, ProviderKind},
     runner::BenchmarkRunner,
 };
+
+/// Which TUI view is active
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
+pub enum View {
+    #[default]
+    Dashboard,
+    Results,
+}
+
+/// A captured sample query result for display
+pub struct SampleResult {
+    pub query: String,
+    pub results: SearchResults,
+}
 
 /// Application state
 pub struct App {
     pub config: Config,
     runner: Option<BenchmarkRunner>,
+    embedder: Option<Embedder>,
     queries: Vec<EmbeddedQuery>,
     pub state: AppState,
+    pub view: View,
     pub history: MetricsHistory,
     pub status_message: Option<String>,
+    pub last_sample: Option<SampleResult>,
+    pub results_scroll: usize,
+    pub query_input: String,
+    pub editing: bool,
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
@@ -91,10 +111,16 @@ impl App {
         Ok(Self {
             config,
             runner: None,
+            embedder: None,
             queries: Vec::new(),
             state: AppState::Idle,
+            view: View::default(),
             history: MetricsHistory::default(),
             status_message: None,
+            last_sample: None,
+            results_scroll: 0,
+            query_input: String::new(),
+            editing: false,
         })
     }
 
@@ -124,6 +150,7 @@ impl App {
             .embed_queries(&query_file.queries)
             .await
             .map_err(|e| anyhow!("{e}"))?;
+        self.embedder = Some(embedder);
 
         self.status_message = Some(format!("Loaded {} queries", self.queries.len()));
         Ok(())
@@ -188,6 +215,79 @@ impl App {
             AppState::Paused => AppState::Idle,
             _ => self.state,
         };
+    }
+
+    pub fn toggle_view(&mut self) {
+        self.view = match self.view {
+            View::Dashboard => View::Results,
+            View::Results => View::Dashboard,
+        };
+    }
+
+    /// Run a single sample query and store the results for display
+    pub async fn run_sample(&mut self) -> Result<()> {
+        let runner = self
+            .runner
+            .as_ref()
+            .ok_or_else(|| anyhow!("Not connected"))?;
+
+        let (query, results) = runner.run_sample_query().await.map_err(|e| anyhow!("{e}"))?;
+        self.last_sample = Some(SampleResult { query, results });
+        self.results_scroll = 0;
+        Ok(())
+    }
+
+    pub fn start_editing(&mut self) {
+        self.editing = true;
+        self.query_input.clear();
+    }
+
+    pub fn cancel_editing(&mut self) {
+        self.editing = false;
+    }
+
+    pub async fn submit_query(&mut self) -> Result<()> {
+        let text = self.query_input.trim().to_string();
+        if text.is_empty() {
+            self.editing = false;
+            return Ok(());
+        }
+
+        let embedder = self
+            .embedder
+            .as_ref()
+            .ok_or_else(|| anyhow!("No embedder configured"))?;
+
+        let mut embedded = embedder
+            .embed_queries(&[text])
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
+
+        let eq = embedded
+            .pop()
+            .ok_or_else(|| anyhow!("Embedding returned no results"))?;
+
+        let runner = self
+            .runner
+            .as_ref()
+            .ok_or_else(|| anyhow!("Not connected"))?;
+
+        let (query, results) = runner.run_custom_query(&eq).await.map_err(|e| anyhow!("{e}"))?;
+        self.last_sample = Some(SampleResult { query, results });
+        self.results_scroll = 0;
+        self.editing = false;
+        Ok(())
+    }
+
+    pub fn scroll_results(&mut self, delta: isize) {
+        let max = self
+            .last_sample
+            .as_ref()
+            .map(|s| s.results.results.len().saturating_sub(1))
+            .unwrap_or(0);
+
+        let current = self.results_scroll as isize;
+        self.results_scroll = (current + delta).clamp(0, max as isize) as usize;
     }
 }
 

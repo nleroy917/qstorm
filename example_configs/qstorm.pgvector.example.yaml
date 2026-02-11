@@ -6,15 +6,19 @@ provider:
   url: "postgresql://postgres:postgres@localhost:5432/vectors"
   table_name: "documents"
   vector_field: "embedding"  # Vector column name (default: "embedding")
-  # text_field: "content"    # Text column for hybrid search (tsvector full-text)
+  text_field: "message"    # Text column for hybrid search (tsvector full-text)
 
 benchmark:
-  mode: vector
+  mode: hybrid
   warmup_iterations: 10
   burst_size: 100
   concurrency: 10
   timeout_ms: 5000
   top_k: 10
 
+# embedding:
+#   model: "BAAI/bge-small-en-v1.5"
+
 embedding:
-  model: "BAAI/bge-small-en-v1.5"
+    model: "openai/text-embedding-3-small"
+    dimensions: 1536

@@ -159,4 +159,38 @@ impl BenchmarkRunner {
     pub fn search_mode(&self) -> SearchMode {
         self.config.mode
     }
+
+    /// Execute a custom query with payloads included (for result inspection)
+    pub async fn run_custom_query(
+        &self,
+        query: &EmbeddedQuery,
+    ) -> Result<(String, crate::types::SearchResults)> {
+        let params = SearchParams {
+            top_k: self.config.top_k,
+            timeout_ms: self.config.timeout_ms,
+            include_payload: true,
+            ..Default::default()
+        };
+
+        let results = self.execute_query(query, &params).await?;
+        Ok((query.text.clone(), results))
+    }
+
+    /// Execute a single sample query with payloads included (for result inspection)
+    pub async fn run_sample_query(&self) -> Result<(String, crate::types::SearchResults)> {
+        if self.queries.is_empty() {
+            return Err(crate::error::Error::Config("No queries configured".into()));
+        }
+
+        let query = &self.queries[0];
+        let params = SearchParams {
+            top_k: self.config.top_k,
+            timeout_ms: self.config.timeout_ms,
+            include_payload: true,
+            ..Default::default()
+        };
+
+        let results = self.execute_query(query, &params).await?;
+        Ok((query.text.clone(), results))
+    }
 }

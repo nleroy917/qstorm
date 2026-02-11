@@ -9,7 +9,7 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 
-use crate::app::{App, AppState};
+use crate::app::{App, AppState, View};
 use crate::ui;
 
 pub type Tui = Terminal<CrosstermBackend<Stdout>>;
@@ -44,15 +44,54 @@ pub async fn run(terminal: &mut Tui, mut app: App) -> Result<()> {
         if event::poll(tick_rate)? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => {
-                            app.disconnect().await?;
-                            return Ok(());
+                    if app.editing {
+                        // Input mode: all keys go to the text buffer
+                        match key.code {
+                            KeyCode::Enter => {
+                                let _ = app.submit_query().await;
+                            }
+                            KeyCode::Esc => {
+                                app.cancel_editing();
+                            }
+                            KeyCode::Backspace => {
+                                app.query_input.pop();
+                            }
+                            KeyCode::Char(c) => {
+                                app.query_input.push(c);
+                            }
+                            _ => {}
                         }
-                        KeyCode::Char(' ') => {
-                            app.toggle_pause();
+                    } else {
+                        match key.code {
+                            KeyCode::Char('q') | KeyCode::Esc => {
+                                app.disconnect().await?;
+                                return Ok(());
+                            }
+                            KeyCode::Char(' ') => {
+                                app.toggle_pause();
+                            }
+                            KeyCode::Tab => {
+                                app.toggle_view();
+                                // Auto-fetch results on first switch
+                                if app.view == View::Results && app.last_sample.is_none() {
+                                    let _ = app.run_sample().await;
+                                }
+                            }
+                            // Results view keybindings
+                            KeyCode::Char('/') if app.view == View::Results => {
+                                app.start_editing();
+                            }
+                            KeyCode::Char('r') if app.view == View::Results => {
+                                let _ = app.run_sample().await;
+                            }
+                            KeyCode::Up | KeyCode::Char('k') if app.view == View::Results => {
+                                app.scroll_results(-1);
+                            }
+                            KeyCode::Down | KeyCode::Char('j') if app.view == View::Results => {
+                                app.scroll_results(1);
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
             }
