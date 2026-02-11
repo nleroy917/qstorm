@@ -1,15 +1,12 @@
+# qstorm configuration example for pgvector (PostgreSQL)
+
 provider:
   name: "pgvector-local"
   type: pgvector
   url: "postgresql://postgres:postgres@localhost:5432/vectors"
-  index: "documents"
-  vector_field: "embedding"
-  # text_field: "content"  # Required for hybrid mode
-
-  # credentials:            # Optional: override URL credentials
-  #   type: basic
-  #   username: "postgres"
-  #   password: "postgres"
+  table_name: "documents"
+  vector_field: "embedding"  # Vector column name (default: "embedding")
+  # text_field: "content"    # Text column for hybrid search (tsvector full-text)
 
 benchmark:
   mode: vector

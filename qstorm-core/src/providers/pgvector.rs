@@ -4,19 +4,21 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::{PgPool, Row};
 use tracing::debug;
 
-use crate::config::{Credentials, ProviderConfig};
+use crate::config::PgvectorConfig;
 use crate::error::{Error, Result};
 use crate::provider::{Capabilities, SearchProvider};
 use crate::types::{SearchParams, SearchResult, SearchResults};
 
 pub struct PgvectorProvider {
-    config: ProviderConfig,
+    name: String,
+    config: PgvectorConfig,
     pool: Option<PgPool>,
 }
 
 impl PgvectorProvider {
-    pub fn new(config: ProviderConfig) -> Self {
+    pub fn new(name: String, config: PgvectorConfig) -> Self {
         Self {
+            name,
             config,
             pool: None,
         }
@@ -25,46 +27,12 @@ impl PgvectorProvider {
     fn pool(&self) -> Result<&PgPool> {
         self.pool.as_ref().ok_or(Error::NotConnected)
     }
-
-    /// Build connection URL, optionally injecting Basic credentials.
-    fn connection_url(&self) -> Result<String> {
-        if let Some(Credentials::Basic { username, password }) = &self.config.credentials {
-            // Parse the URL and inject credentials
-            let url = &self.config.url;
-            if let Some(rest) = url.strip_prefix("postgresql://") {
-                // Strip any existing credentials
-                let rest = if let Some(at_pos) = rest.find('@') {
-                    &rest[at_pos + 1..]
-                } else {
-                    rest
-                };
-                Ok(format!("postgresql://{}:{}@{}", username, password, rest))
-            } else if let Some(rest) = url.strip_prefix("postgres://") {
-                let rest = if let Some(at_pos) = rest.find('@') {
-                    &rest[at_pos + 1..]
-                } else {
-                    rest
-                };
-                Ok(format!("postgres://{}:{}@{}", username, password, rest))
-            } else {
-                Err(Error::Config(
-                    "Invalid PostgreSQL URL: must start with postgresql:// or postgres://".into(),
-                ))
-            }
-        } else if self.config.credentials.is_some() {
-            Err(Error::Config(
-                "pgvector only supports Basic credentials (or credentials embedded in URL)".into(),
-            ))
-        } else {
-            Ok(self.config.url.clone())
-        }
-    }
 }
 
 #[async_trait]
 impl SearchProvider for PgvectorProvider {
     fn name(&self) -> &str {
-        &self.config.name
+        &self.name
     }
 
     fn capabilities(&self) -> Capabilities {
@@ -76,11 +44,9 @@ impl SearchProvider for PgvectorProvider {
     }
 
     async fn connect(&mut self) -> Result<()> {
-        let url = self.connection_url()?;
-
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect(&url)
+            .connect(&self.config.url)
             .await
             .map_err(|e| Error::Connection(e.to_string()))?;
 
@@ -88,7 +54,7 @@ impl SearchProvider for PgvectorProvider {
         let exists: bool = sqlx::query_scalar(
             "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = $1)",
         )
-        .bind(&self.config.index)
+        .bind(&self.config.table_name)
         .fetch_one(&pool)
         .await
         .map_err(|e| Error::Connection(e.to_string()))?;
@@ -96,11 +62,11 @@ impl SearchProvider for PgvectorProvider {
         if !exists {
             return Err(Error::Config(format!(
                 "Table '{}' not found",
-                self.config.index
+                self.config.table_name
             )));
         }
 
-        debug!(table = %self.config.index, "Connected to pgvector");
+        debug!(table = %self.config.table_name, "Connected to pgvector");
         self.pool = Some(pool);
         Ok(())
     }
@@ -124,7 +90,7 @@ impl SearchProvider for PgvectorProvider {
     async fn vector_search(&self, vector: &[f32], params: &SearchParams) -> Result<SearchResults> {
         let pool = self.pool()?;
         let vector_field = self.config.vector_field.as_deref().unwrap_or("embedding");
-        let table = &self.config.index;
+        let table = &self.config.table_name;
         let embedding = Vector::from(vector.to_vec());
 
         let query = if params.include_payload {
@@ -186,7 +152,7 @@ impl SearchProvider for PgvectorProvider {
             )
         })?;
         let vector_field = self.config.vector_field.as_deref().unwrap_or("embedding");
-        let table = &self.config.index;
+        let table = &self.config.table_name;
         let embedding = Vector::from(vector.to_vec());
         let prefetch_limit = (params.top_k * 2) as i64;
         let limit = params.top_k as i64;

@@ -1,7 +1,7 @@
 use anyhow::{Result, anyhow};
 use qstorm_core::{
     BurstMetrics, Config, EmbeddedQuery, Embedder, QueryFile,
-    config::{ProviderConfig, ProviderType},
+    config::{ProviderConfig, ProviderKind},
     runner::BenchmarkRunner,
 };
 
@@ -192,26 +192,21 @@ impl App {
 }
 
 fn create_provider(config: &ProviderConfig) -> Result<Box<dyn qstorm_core::SearchProvider>> {
-    match config.provider_type {
+    let name = config.name.clone();
+    match &config.provider {
         #[cfg(feature = "elasticsearch")]
-        ProviderType::Elasticsearch => Ok(Box::new(
-            qstorm_core::providers::ElasticsearchProvider::new(config.clone()),
+        ProviderKind::Elasticsearch(c) => Ok(Box::new(
+            qstorm_core::providers::ElasticsearchProvider::new(name, c.clone()),
         )),
 
         #[cfg(feature = "qdrant")]
-        ProviderType::Qdrant => Ok(Box::new(qstorm_core::providers::QdrantProvider::new(
-            config.clone(),
-        ))),
-
-        #[cfg(feature = "pgvector")]
-        ProviderType::Pgvector => Ok(Box::new(
-            qstorm_core::providers::PgvectorProvider::new(config.clone()),
+        ProviderKind::Qdrant(c) => Ok(Box::new(
+            qstorm_core::providers::QdrantProvider::new(name, c.clone()),
         )),
 
-        #[allow(unreachable_patterns)]
-        _ => Err(anyhow!(
-            "Provider {:?} is not enabled in this build",
-            config.provider_type
+        #[cfg(feature = "pgvector")]
+        ProviderKind::Pgvector(c) => Ok(Box::new(
+            qstorm_core::providers::PgvectorProvider::new(name, c.clone()),
         )),
     }
 }

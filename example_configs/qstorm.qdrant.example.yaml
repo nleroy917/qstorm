@@ -4,13 +4,10 @@ provider:
   name: "qdrant-local"
   type: qdrant
   url: "http://localhost:6334"
-  index: "products"  # Collection name in Qdrant
-  # Optional API key authentication
-  # credentials:
-  #   type: api_key
-  #   key: "your-api-key"
-  vector_field: "dense"  # Dense vector field name (default: "vector")
-  # text_field: "bm25"   # BM25 sparse index name (required for hybrid mode)
+  collection_name: "products"
+  # api_key: "your-api-key"  # Optional API key authentication
+  vector_field: "dense"      # Named vector field (omit for default unnamed vector)
+  # text_field: "bm25"       # BM25 sparse index name (required for hybrid mode)
 
 benchmark:
   mode: vector           # "vector" (default) or "hybrid"

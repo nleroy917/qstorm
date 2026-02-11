@@ -6,19 +6,21 @@ use qdrant_client::qdrant::{
 };
 use tracing::debug;
 
-use crate::config::{Credentials, ProviderConfig};
+use crate::config::QdrantConfig;
 use crate::error::{Error, Result};
 use crate::provider::{Capabilities, SearchProvider};
 use crate::types::{SearchParams, SearchResult, SearchResults};
 
 pub struct QdrantProvider {
-    config: ProviderConfig,
+    name: String,
+    config: QdrantConfig,
     client: Option<Qdrant>,
 }
 
 impl QdrantProvider {
-    pub fn new(config: ProviderConfig) -> Self {
+    pub fn new(name: String, config: QdrantConfig) -> Self {
         Self {
+            name,
             config,
             client: None,
         }
@@ -32,7 +34,7 @@ impl QdrantProvider {
 #[async_trait]
 impl SearchProvider for QdrantProvider {
     fn name(&self) -> &str {
-        &self.config.name
+        &self.name
     }
 
     fn capabilities(&self) -> Capabilities {
@@ -46,15 +48,8 @@ impl SearchProvider for QdrantProvider {
     async fn connect(&mut self) -> Result<()> {
         let mut builder = Qdrant::from_url(&self.config.url);
 
-        if let Some(creds) = &self.config.credentials {
-            builder = match creds {
-                Credentials::ApiKey { key } => builder.api_key(key.clone()),
-                _ => {
-                    return Err(Error::Config(
-                        "Qdrant only supports API key authentication".into(),
-                    ));
-                }
-            };
+        if let Some(api_key) = &self.config.api_key {
+            builder = builder.api_key(api_key.clone());
         }
 
         let client = builder
@@ -70,16 +65,16 @@ impl SearchProvider for QdrantProvider {
         let exists = collections
             .collections
             .iter()
-            .any(|c| c.name == self.config.index);
+            .any(|c| c.name == self.config.collection_name);
 
         if !exists {
             return Err(Error::Config(format!(
                 "Collection '{}' not found",
-                self.config.index
+                self.config.collection_name
             )));
         }
 
-        debug!(collection = %self.config.index, "Connected to Qdrant");
+        debug!(collection = %self.config.collection_name, "Connected to Qdrant");
         self.client = Some(client);
         Ok(())
     }
@@ -102,8 +97,11 @@ impl SearchProvider for QdrantProvider {
         let client = self.client()?;
         let vector_field = self.config.vector_field.as_deref();
 
-        let mut search =
-            SearchPointsBuilder::new(&self.config.index, vector.to_vec(), params.top_k as u64);
+        let mut search = SearchPointsBuilder::new(
+            &self.config.collection_name,
+            vector.to_vec(),
+            params.top_k as u64,
+        );
 
         if let Some(field) = vector_field {
             search = search.vector_name(field.to_string());
@@ -187,7 +185,7 @@ impl SearchProvider for QdrantProvider {
         }
 
         // Fuse with RRF
-        let query = QueryPointsBuilder::new(&self.config.index)
+        let query = QueryPointsBuilder::new(&self.config.collection_name)
             .add_prefetch(bm25_prefetch)
             .add_prefetch(dense_prefetch)
             .query(Fusion::Rrf)

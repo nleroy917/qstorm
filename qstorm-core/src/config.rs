@@ -32,41 +32,73 @@ impl Config {
     }
 }
 
-/// Configuration for a search provider
+/// Top-level provider configuration (shared name + provider-specific config)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderConfig {
-    /// Display name for this provider
+    /// Display name for this provider instance
     pub name: String,
-    /// Provider type
-    #[serde(rename = "type")]
-    pub provider_type: ProviderType,
-    /// Connection URL
+    /// Provider-specific configuration
+    #[serde(flatten)]
+    pub provider: ProviderKind,
+}
+
+/// Provider-specific configuration, discriminated by `type` field
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum ProviderKind {
+    #[cfg(feature = "elasticsearch")]
+    Elasticsearch(ElasticsearchConfig),
+    #[cfg(feature = "qdrant")]
+    Qdrant(QdrantConfig),
+    #[cfg(feature = "pgvector")]
+    Pgvector(PgvectorConfig),
+}
+
+/// Qdrant provider configuration
+#[cfg(feature = "qdrant")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QdrantConfig {
     pub url: String,
-    /// Index/collection name
-    pub index: String,
-    /// Authentication credentials
     #[serde(default)]
-    pub credentials: Option<Credentials>,
-    /// Vector field name (for vector search)
+    pub api_key: Option<String>,
+    pub collection_name: String,
+    /// Named vector field (omit for default unnamed vector)
     pub vector_field: Option<String>,
-    /// Text field name (for keyword search)
+    /// BM25 index name for hybrid search
     pub text_field: Option<String>,
 }
 
+/// Elasticsearch provider configuration
+#[cfg(feature = "elasticsearch")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ProviderType {
-    Elasticsearch,
-    Qdrant,
-    Pgvector,
+pub struct ElasticsearchConfig {
+    pub url: String,
+    #[serde(default)]
+    pub credentials: Option<ElasticsearchCredentials>,
+    pub index_name: String,
+    pub vector_field: Option<String>,
+    pub text_field: Option<String>,
 }
 
+#[cfg(feature = "elasticsearch")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum Credentials {
+pub enum ElasticsearchCredentials {
     Basic { username: String, password: String },
     ApiKey { key: String },
     Bearer { token: String },
+}
+
+/// pgvector (PostgreSQL) provider configuration
+#[cfg(feature = "pgvector")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PgvectorConfig {
+    /// PostgreSQL connection string (e.g. postgresql://user:pass@localhost:5432/db)
+    pub url: String,
+    pub table_name: String,
+    pub vector_field: Option<String>,
+    /// Text column for hybrid search (tsvector full-text)
+    pub text_field: Option<String>,
 }
 
 /// What kind of search to benchmark

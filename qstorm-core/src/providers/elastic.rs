@@ -7,19 +7,21 @@ use elasticsearch::{
 use serde_json::json;
 use tracing::debug;
 
-use crate::config::{Credentials, ProviderConfig};
+use crate::config::{ElasticsearchConfig, ElasticsearchCredentials};
 use crate::error::{Error, Result};
 use crate::provider::{Capabilities, SearchProvider};
 use crate::types::{SearchParams, SearchResult, SearchResults};
 
 pub struct ElasticsearchProvider {
-    config: ProviderConfig,
+    name: String,
+    config: ElasticsearchConfig,
     client: Option<Elasticsearch>,
 }
 
 impl ElasticsearchProvider {
-    pub fn new(config: ProviderConfig) -> Self {
+    pub fn new(name: String, config: ElasticsearchConfig) -> Self {
         Self {
+            name,
             config,
             client: None,
         }
@@ -33,7 +35,7 @@ impl ElasticsearchProvider {
 #[async_trait]
 impl SearchProvider for ElasticsearchProvider {
     fn name(&self) -> &str {
-        &self.config.name
+        &self.name
     }
 
     fn capabilities(&self) -> Capabilities {
@@ -56,13 +58,15 @@ impl SearchProvider for ElasticsearchProvider {
 
         if let Some(creds) = &self.config.credentials {
             builder = match creds {
-                Credentials::Basic { username, password } => {
+                ElasticsearchCredentials::Basic { username, password } => {
                     builder.auth(EsCredentials::Basic(username.clone(), password.clone()))
                 }
-                Credentials::ApiKey { key } => {
+                ElasticsearchCredentials::ApiKey { key } => {
                     builder.auth(EsCredentials::ApiKey(key.clone(), "".to_string()))
                 }
-                Credentials::Bearer { token } => builder.auth(EsCredentials::Bearer(token.clone())),
+                ElasticsearchCredentials::Bearer { token } => {
+                    builder.auth(EsCredentials::Bearer(token.clone()))
+                }
             };
         }
 
@@ -84,7 +88,7 @@ impl SearchProvider for ElasticsearchProvider {
             return Err(Error::Connection("Health check failed".into()));
         }
 
-        debug!(index = %self.config.index, "Connected to Elasticsearch");
+        debug!(index = %self.config.index_name, "Connected to Elasticsearch");
         self.client = Some(client);
         Ok(())
     }
@@ -120,7 +124,7 @@ impl SearchProvider for ElasticsearchProvider {
         });
 
         let response = client
-            .search(SearchParts::Index(&[&self.config.index]))
+            .search(SearchParts::Index(&[&self.config.index_name]))
             .body(body)
             .send()
             .await
@@ -201,7 +205,7 @@ impl SearchProvider for ElasticsearchProvider {
         });
 
         let response = client
-            .search(SearchParts::Index(&[&self.config.index]))
+            .search(SearchParts::Index(&[&self.config.index_name]))
             .body(body)
             .send()
             .await

@@ -4,7 +4,7 @@ provider:
   name: "elasticsearch-local"
   type: elasticsearch
   url: "http://localhost:9200"
-  index: "products"
+  index_name: "products"
   credentials:
     type: basic
     username: "elastic"
