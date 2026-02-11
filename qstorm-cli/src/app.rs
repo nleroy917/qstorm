@@ -132,6 +132,18 @@ impl App {
         self.queries.len()
     }
 
+    pub fn take_runner(&mut self) -> Option<BenchmarkRunner> {
+        self.runner.take()
+    }
+
+    pub fn put_runner(&mut self, runner: BenchmarkRunner) {
+        self.runner = Some(runner);
+    }
+
+    pub fn has_runner(&self) -> bool {
+        self.runner.is_some()
+    }
+
     /// Load queries from file and embed them
     pub async fn load_and_embed_queries(&mut self, query_file_path: &str) -> Result<()> {
         self.status_message = Some("Loading queries...".into());

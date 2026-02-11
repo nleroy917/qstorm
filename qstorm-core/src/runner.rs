@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
+use futures::stream::{FuturesUnordered, StreamExt};
 use tokio::sync::Semaphore;
 use tracing::{debug, info, warn};
 
@@ -77,7 +78,7 @@ impl BenchmarkRunner {
         Ok(())
     }
 
-    /// Execute a single burst of vector queries
+    /// Execute a single burst of vector queries concurrently
     pub async fn run_burst(&mut self) -> Result<BurstMetrics> {
         if self.queries.is_empty() {
             return Err(crate::error::Error::Config("No queries configured".into()));
@@ -92,28 +93,54 @@ impl BenchmarkRunner {
 
         self.metrics.start_burst();
 
-        // Cycle through queries for this burst
         let query_indices: Vec<usize> = (0..self.config.burst_size)
             .map(|i| i % self.queries.len())
             .collect();
 
+        // Field-level borrows so we can use &mut self.metrics after futures complete
+        let provider = &*self.provider;
+        let queries = &self.queries;
+        let mode = self.config.mode;
+
+        // Phase 1: dispatch all queries concurrently
+        let mut futures = FuturesUnordered::new();
         for idx in query_indices {
-            let _permit = semaphore.clone().acquire_owned().await.unwrap();
-            let query = &self.queries[idx];
+            let sem = semaphore.clone();
             let params = params.clone();
+            let query = &queries[idx];
 
-            let start = Instant::now();
-            let result = self.execute_query(query, &params).await;
-            let latency = start.elapsed();
+            futures.push(async move {
+                let _permit = sem.acquire_owned().await.unwrap();
+                let start = Instant::now();
+                let result = match mode {
+                    SearchMode::Vector => provider.vector_search(&query.vector, &params).await,
+                    SearchMode::Hybrid => {
+                        provider
+                            .hybrid_search(&query.text, &query.vector, &params)
+                            .await
+                    }
+                };
+                let latency = start.elapsed();
+                (result, latency, query.text.clone())
+            });
+        }
 
+        // Phase 2: collect all results
+        let mut results = Vec::with_capacity(self.config.burst_size);
+        while let Some(item) = futures.next().await {
+            results.push(item);
+        }
+        drop(futures);
+
+        // Phase 3: record metrics (requires &mut self.metrics, now safe)
+        for (result, latency, query_text) in results {
             match result {
-                Ok(results) => {
-                    // TODO: Calculate recall if ground truth is provided
+                Ok(search_results) => {
                     self.metrics.record_success(latency, None);
                     debug!(
                         latency_ms = latency.as_millis(),
-                        hits = results.results.len(),
-                        query = %query.text,
+                        hits = search_results.results.len(),
+                        query = %query_text,
                         "Query succeeded"
                     );
                 }
