@@ -115,6 +115,9 @@ impl SearchProvider for QdrantProvider {
             search = search.score_threshold(min_score);
         }
 
+        // return payloads
+        search = search.with_payload(true);
+
         let response = client
             .search_points(search)
             .await
@@ -189,6 +192,7 @@ impl SearchProvider for QdrantProvider {
             .add_prefetch(bm25_prefetch)
             .add_prefetch(dense_prefetch)
             .query(Fusion::Rrf)
+            .with_payload(true)
             .limit(limit);
 
         let response = client
